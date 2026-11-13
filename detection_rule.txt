@@ -1,0 +1,27 @@
+title: Brute Force SSH with Privilege Escalation and Backdoor Account Creation  
+id: 12345678-1234-1234-1234-123456789abc  
+status: experimental  
+description: Detects SSH brute-force attempts targeting multiple high-value or common system/service accounts, followed by privilege escalation via sudo and creation of a backdoor user with UID 0.  
+author: Detection Engineer  
+date: 2024/07/25  
+logsource:  
+  product: linux  
+  service: auth  
+detection:  
+  selection:  
+    - logsource:  
+        product: linux  
+        service: auth  
+    - condition: (  
+        (event.type: "authentication_failure" AND event.action: "sshd: Failed password" AND user.target IN ("git", "test", "ftpuser", "postgres", "user", "admin", "oracle", "ftpuser"))  
+        OR  
+        (event.type: "privilege_escalation" AND event.action: "sudo" AND user.target: "root" AND process.command_line: "*cat /etc/shadow*")  
+        OR  
+        (event.type: "account_creation" AND event.action: "useradd" AND user.new.uid: "0" AND user.new.name: "svc_backdoor")  
+      )  
+  condition: selection  
+  timeframe: 15m  
+falsepositives:  
+  - Legitimate password guessing during security testing (ensure authorized)  
+  - Automated backup tools accessing /etc/shadow (rare and should be reviewed)  
+level: high
